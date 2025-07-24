@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sherpa - Multimodal Assistant</title>
+    <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin">
+    <meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- Base Styles --- */
+        html, body {
+            height: 100%;
+            overflow: hidden; /* Prevent body scroll */
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            /* AESTHETIC: Light gradient representing a clear sky, fitting for a "Sherpa" */
+            background: linear-gradient(to bottom, #e0f2fe, #f8fafc);
+            color: #374151; /* gray-700 for default text */
+        }
+
+        /* --- Glassmorphism Effect for Panels --- */
+        .glass-panel {
+            /* AESTHETIC: Semi-transparent white for a frosted glass look */
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 0.75rem; /* lg */
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+        }
+
+        /* --- Video Container --- */
+        .video-container {
+            position: relative;
+            width: 100%;
+            /* REMOVED: Fixed height to allow flex growth */
+            overflow: hidden;
+            background-color: #e5e7eb; /* gray-200 for placeholder */
+            border-radius: 0.5rem;
+        }
+        
+        #live-video {
+            width: 100%;
+            height: 100%;
+            /* Changed to contain to ensure full visibility of shared screen */
+            object-fit: contain; 
+        }
+
+        /* --- UI Controls --- */
+        .control-button {
+            /* AESTHETIC: A strong, friendly indigo for primary actions */
+            background-color: #4f46e5; /* indigo-600 */
+            color: white;
+            padding: 0.6rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            transition: background-color 0.2s, box-shadow 0.2s;
+        }
+        .control-button:hover {
+            background-color: #6366f1; /* indigo-500 */
+        }
+        .control-button:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.4);
+        }
+        .control-button:disabled {
+            background-color: #a5b4fc; /* indigo-300 */
+            cursor: not-allowed;
+        }
+
+        /* --- Microphone Button --- */
+        .mic-button {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            background-color: #374151; /* gray-700 */
+            transition: background-color 0.2s, box-shadow 0.2s;
+        }
+        .mic-button:hover {
+            background-color: #4b5563; /* gray-600 */
+        }
+        .mic-button.is-recording {
+            background-color: #dc2626; /* red-600 */
+            box-shadow: 0 0 15px rgba(220, 38, 38, 0.6);
+        }
+        
+        /* --- End Call Button --- */
+        .end-call-button {
+            background-color: #ef4444; /* red-500 */
+            color: white;
+            border-radius: 50%;
+            padding: 0.8rem;
+            transition: background-color 0.2s;
+        }
+        .end-call-button:hover {
+            background-color: #dc2626; /* red-600 */
+        }
+
+        /* --- Audio Wave Animation --- */
+        .audio-wave-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 2.5rem;
+            margin-top: 0.75rem;
+        }
+        .audio-wave span {
+            background-color: #4f46e5; /* indigo-600 to match controls */
+            animation: wave 1.2s infinite ease-in-out;
+            /* Base styles from original */
+            display: inline-block;
+            width: 3px;
+            height: 100%;
+            margin: 0 2px;
+            border-radius: 3px;
+        }
+        .audio-wave span:nth-child(2) { animation-delay: 0.1s; }
+        .audio-wave span:nth-child(3) { animation-delay: 0.2s; }
+        .audio-wave span:nth-child(4) { animation-delay: 0.3s; }
+        .audio-wave span:nth-child(5) { animation-delay: 0.4s; }
+
+        @keyframes wave {
+            0%, 40%, 100% { transform: scaleY(0.4); }
+            20% { transform: scaleY(1); }
+        }
+
+        /* --- Custom Scrollbar for Transcript --- */
+        #transcript-container::-webkit-scrollbar { width: 8px; }
+        #transcript-container::-webkit-scrollbar-track { background: transparent; }
+        #transcript-container::-webkit-scrollbar-thumb { background: #cbd5e1; /* slate-300 */ border-radius: 10px; }
+        #transcript-container::-webkit-scrollbar-thumb:hover { background: #94a3b8; /* slate-400 */ }
+        
+        /* --- Transcript Message Styling --- */
+        #transcript-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+    </style>
+</head>
+<body class="flex flex-col h-screen">
+    <div class="items-center justify-center ">
+        <header class="flex-shrink-0">
+            
+        <nav class="glass-panel mx-4 mt-4 px-6 py-3">
+            <h1 class="text-2xl font-bold text-gray-800">Sherpa - Your over the shoulder guide in GCP</h1>
+        </nav>
+
+        </header>
+    </div>
+ 
+    <main class="flex-grow flex flex-row gap-6 p-4 min-h-0">
+        <div class="w-1/2 h-full flex flex-col">
+            <div class="glass-panel p-5 flex flex-col flex-grow">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4 flex-shrink-0">Stream your screen</h2>
+                <div class="video-container flex-grow min-h-0">
+                    <video id="live-video" class="w-full h-full" autoplay playsinline style="display: none;"></video>
+                    <div id="video-placeholder" class="absolute inset-0 flex items-center justify-center text-gray-500">
+                        <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                    </div>
+                </div>
+                <div class="mt-4 flex justify-center space-x-4 flex-shrink-0">
+                    <button id="camera-btn" class="control-button">Start Camera</button>
+                    <button id="screen-btn" class="control-button">Share Screen</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="w-1/2 h-full flex flex-col">
+            <div class="glass-panel p-5 flex flex-col flex-grow h-full">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4 flex-shrink-0">Conversation Transcript</h2>
+                
+                <div class="py-2 flex items-center justify-center space-x-6 flex-shrink-0">
+                    <button id="mic-btn" class="mic-button">
+                         <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                    </button>
+                    <p id="mic-status" class="text-gray-600 font-medium text-center">Click the mic to start</p>
+                    <button id="end-call-btn" class="end-call-button">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                
+                <div id="audio-indicator" class="audio-wave-container hidden flex-shrink-0">
+                    <div class="audio-wave">
+                        <span></span><span></span><span></span><span></span><span></span>
+                    </div>
+                </div>
+
+                <div id="transcript-container" class="bg-slate-50/50 rounded-lg p-4 flex-grow overflow-y-auto mt-4">
+                    <p id="transcript-placeholder" class="text-center text-gray-500 m-auto">Your conversation will appear here.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <script src="audio-client.js"></script>
+    <script src="multimodal-client.js"></script>
+    <script>
+        if (typeof MultimodalClient === 'undefined') {
+            console.warn('`MultimodalClient` is not defined. Using a mock version for demonstration.');
+            window.MultimodalClient = class MockMultimodalClient {
+                constructor() { this.handlers = {}; }
+                on(event, callback) { this.handlers[event] = callback; }
+                emit(event, data) { this.handlers[event]?.(data); }
+                connect() { return new Promise(resolve => { setTimeout(() => { this.emit('ready'); resolve(); }, 500); }); }
+                startRecording() { this.emit('audioReceived'); setTimeout(() => this.emit('textReceived', 'This is a sample response from the assistant.'), 1500); setTimeout(() => this.emit('turnComplete'), 2000); }
+                stopRecording() {}
+                initializeWebcam() { return Promise.resolve(true); }
+                initializeScreenShare() { return Promise.resolve(true); }
+                startVideoStream() {}
+                stopVideo() {}
+                close() {}
+            };
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            let elements = {
+                micButton: document.getElementById('mic-btn'),
+                micStatus: document.getElementById('mic-status'),
+                cameraButton: document.getElementById('camera-btn'),
+                screenButton: document.getElementById('screen-btn'),
+                video: document.getElementById('live-video'),
+                videoPlaceholder: document.getElementById('video-placeholder'),
+                endCallButton: document.getElementById('end-call-btn'),
+                transcriptContainer: document.getElementById('transcript-container'),
+                transcriptPlaceholder: document.getElementById('transcript-placeholder'),
+                audioIndicator: document.getElementById('audio-indicator'),
+            };
+
+            const state = {
+                isRecording: false,
+                isVideoActive: false,
+                activeVideoMode: null, 
+                client: null,
+            };
+
+            function initializeClient() {
+                state.client = new MultimodalClient('ws://0.0.0.0:8765');
+                state.client.onReady = () => console.log('Client is ready.');
+                state.client.onAudioReceived = () => elements.audioIndicator.classList.remove('hidden');
+                state.client.onError = (error) => {
+                    console.error('Client Error:', error);
+                    addTranscriptMessage('An error occurred. Please try again.', 'assistant');
+                };
+
+                let currentMessageElement = null;
+                state.client.onTextReceived = (text) => {
+                    if (currentMessageElement === null) {
+                        currentMessageElement = addTranscriptMessage(text, 'assistant');
+                    } else {
+                        currentMessageElement.textContent += text;
+                    }
+                    elements.transcriptContainer.scrollTop = elements.transcriptContainer.scrollHeight;
+                };
+                
+                state.client.onTurnComplete = () => {
+                    elements.audioIndicator.classList.add('hidden');
+                    currentMessageElement = null;
+                };
+
+                state.client.connect().catch(err => {
+                    console.error('Connection failed:', err);
+                    elements.micStatus.textContent = 'Connection failed.';
+                });
+            }
+
+            function addTranscriptMessage(text, sender) {
+                if (elements.transcriptPlaceholder) {
+                    elements.transcriptPlaceholder.remove();
+                    elements.transcriptPlaceholder = null;
+                }
+                const message = document.createElement('div');
+                message.textContent = text;
+                const baseClasses = 'p-3 rounded-xl max-w-md lg:max-w-lg break-words leading-relaxed text-sm shadow-md';
+                if (sender === 'user') {
+                    message.className = `${baseClasses} bg-indigo-600 text-white self-end ml-auto`;
+                } else {
+                    message.className = `${baseClasses} bg-white text-gray-800 self-start`;
+                }
+                elements.transcriptContainer.appendChild(message);
+                elements.transcriptContainer.scrollTop = elements.transcriptContainer.scrollHeight;
+                return message;
+            }
+
+            // --- Core Logic (no changes needed here, only style-related JS above) ---
+            async function toggleRecording() {
+                state.isRecording = !state.isRecording;
+                elements.micButton.classList.toggle('is-recording', state.isRecording);
+                elements.micStatus.textContent = state.isRecording ? 'Recording... Click to stop' : 'Click the mic to start';
+                if (state.isRecording) {
+                    addTranscriptMessage('Listening...', 'user');
+                    await state.client.startRecording();
+                } else {
+                    state.client.stopRecording();
+                }
+            }
+
+            async function toggleVideoStream(mode) {
+                const isStopping = state.isVideoActive && state.activeVideoMode === mode;
+                if (isStopping) {
+                    state.client.stopVideo();
+                    elements.video.srcObject = null;
+                    elements.video.style.display = 'none';
+                    elements.videoPlaceholder.style.display = 'flex';
+                    state.isVideoActive = false;
+                    state.activeVideoMode = null;
+                } else {
+                    if (state.isVideoActive) state.client.stopVideo();
+                    const success = mode === 'webcam'
+                        ? await state.client.initializeWebcam(elements.video)
+                        : await state.client.initializeScreenShare(elements.video);
+                    if (success) {
+                        elements.video.style.display = 'block';
+                        elements.videoPlaceholder.style.display = 'none';
+                        state.isVideoActive = true;
+                        state.activeVideoMode = mode;
+                        if (state.client.isConnected) state.client.startVideoStream(1);
+                    } else {
+                        addTranscriptMessage(`Could not start ${mode}. Check permissions.`, 'assistant');
+                        state.isVideoActive = false;
+                        state.activeVideoMode = null;
+                    }
+                }
+                updateUIVideoButtons();
+            }
+
+            function updateUIVideoButtons() {
+                elements.cameraButton.textContent = (state.isVideoActive && state.activeVideoMode === 'webcam') ? 'Stop Camera' : 'Start Camera';
+                elements.screenButton.textContent = (state.isVideoActive && state.activeVideoMode === 'screen') ? 'Stop Sharing' : 'Share Screen';
+            }
+            
+            function endSession() {
+                if (state.client) state.client.close();
+                state.isRecording = false;
+                elements.micButton.classList.remove('is-recording');
+                elements.micStatus.textContent = 'Click the mic to start';
+                if (state.isVideoActive) {
+                    elements.video.srcObject = null;
+                    elements.video.style.display = 'none';
+                    elements.videoPlaceholder.style.display = 'flex';
+                    state.isVideoActive = false;
+                    state.activeVideoMode = null;
+                    updateUIVideoButtons();
+                }
+                addTranscriptMessage('Session ended.', 'assistant');
+                setTimeout(initializeClient, 1000);
+            }
+
+            elements.micButton.addEventListener('click', toggleRecording);
+            elements.cameraButton.addEventListener('click', () => toggleVideoStream('webcam'));
+            elements.screenButton.addEventListener('click', () => toggleVideoStream('screen'));
+            elements.endCallButton.addEventListener('click', endSession);
+            window.addEventListener('beforeunload', () => state.client?.close());
+            window.addEventListener('screenshare-ended', () => {
+                if (state.activeVideoMode === 'screen') {
+                    toggleVideoStream('screen');
+                }
+            });
+
+            initializeClient();
+            updateUIVideoButtons();
+        });
+    </script>
+</body>
+</html>
