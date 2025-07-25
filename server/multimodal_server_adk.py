@@ -16,12 +16,6 @@ from google.genai import types
 from dotenv import load_dotenv
 from google import genai
 
-# Only run this block for Gemini Developer API
-os.environ["GOOGLE_API_KEY"] = "your_api_key_here"  # Replace with your actual API ke
-client = genai.Client(api_key='Your API Key')  # Replace with your actual API key
-print("Google ADK initialized with API key.")
-
-
 
 load_dotenv()
 
@@ -33,14 +27,8 @@ from common import (
     VOICE_NAME,
     SEND_SAMPLE_RATE,
     SYSTEM_INSTRUCTION,
-    get_order_status,
 )
 
-
-
-
-
-VOICE_NAME = "Aoede"  # Changed from "Puck" to "Aoede"
 
 # Initialize Vertex AI
 

@@ -11,11 +11,11 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # Constants
-PROJECT_ID = "Your-Project-ID"  # Replace with your GCP project ID
-LOCATION = "us-central1"
+
+
 MODEL = "gemini-2.0-flash-live-001"
-VOICE_NAME = "Puck"
-API_KEY = "Your-API-Key"  # Replace with your Gemini API key
+VOICE_NAME = "Aoede"
+
 
 # Audio sample rates for input/output
 RECEIVE_SAMPLE_RATE = 24000  # Rate of audio received from Gemini
